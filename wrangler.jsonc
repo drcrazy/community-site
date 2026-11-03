@@ -7,7 +7,7 @@
     {
       "binding": "DB",
       "database_name": "community-site",
-      "database_id": "local-community-site",
+      "database_id": "cd5c4dbf-0cf1-488c-ae16-0763f816a097",
       "migrations_dir": "migrations"
     }
   ],
