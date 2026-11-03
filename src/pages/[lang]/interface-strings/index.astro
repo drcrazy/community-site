@@ -1,0 +1,34 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import { InterfaceStringsWorkbench } from "../../../components/admin/InterfaceStringsWorkbench";
+import { allowsInterfaceStrings } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/interface-strings/");
+const lang = langParam as Locale;
+const member = Astro.locals.member;
+if (!allowsInterfaceStrings(member)) return Astro.redirect(localizedPath(lang, "/sign-in/"));
+const t = ui(lang, Astro.locals.uiOverrides);
+const translateLocales = member?.siteRank === "admin" ? (["de", "fr", "ru", "es"] as Locale[]) : (member?.languages ?? []);
+---
+
+<BaseLayout title={`Interface strings · Pop Epoch`} locale={lang}>
+  <AppShell locale={lang} activeSection="news" pageBackground="general" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: "Interface strings" }]}>
+    <div class="page-head">
+      <h1>Interface strings</h1>
+      <p>Translate chrome labels. English ships in the app and is not stored in D1.</p>
+    </div>
+    <InterfaceStringsWorkbench client:load locales={translateLocales} />
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { margin: 0 0 8px; }
+  .page-head p { color: var(--ink-soft); }
+</style>

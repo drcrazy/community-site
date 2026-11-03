@@ -1,0 +1,50 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import { ContentBuilder } from "../../../components/content-builder/ContentBuilder";
+import { allowsPrepare, allowsPublish } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/content-builder/");
+const lang = langParam as Locale;
+const member = Astro.locals.member;
+if (!allowsPrepare(member) && !(member && member.languages.length > 0)) {
+  return Astro.redirect(localizedPath(lang, "/sign-in/"));
+}
+const t = ui(lang, Astro.locals.uiOverrides);
+const canPrepare = allowsPrepare(member);
+const canPublish = allowsPublish(member);
+const translateLocales = member?.siteRank === "admin" ? (["de", "fr", "ru", "es"] as Locale[]) : (member?.languages ?? []);
+---
+
+<BaseLayout title={`Content Builder · Pop Epoch`} locale={lang} canonical={new URL(localizedPath(lang, "/content-builder/"), Astro.site)}>
+  <AppShell
+    locale={lang}
+    activeSection="guides"
+    pageBackground="guides"
+    crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: "Content Builder" }]}
+  >
+    <div class="page-head">
+      <h1>Content Builder</h1>
+      <p>{canPrepare ? "Prepare English drafts and publish when allowed." : "Translate assigned languages for existing drafts."}</p>
+    </div>
+    <ContentBuilder
+      client:load
+      locale={lang}
+      canPrepare={canPrepare}
+      canPublish={canPublish}
+      translateLocales={translateLocales}
+      mode={canPrepare ? "edit" : "translate"}
+    />
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 3vw, 2.2rem); }
+  .page-head p { color: var(--ink-soft); }
+</style>

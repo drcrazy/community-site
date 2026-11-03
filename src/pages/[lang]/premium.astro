@@ -1,0 +1,48 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AppShell from "../../components/AppShell.astro";
+import { isLocale, localizedPath, type Locale } from "../../lib/i18n/locales";
+import { fill, ui } from "../../lib/i18n/ui";
+import { PREMIUM_PERIOD_DAYS, PREMIUM_PRICE_USD } from "../../lib/premium";
+
+export const prerender = false;
+
+const locale = Astro.params.lang as string;
+if (!isLocale(locale)) return Astro.redirect("/en/premium/");
+const lang = locale as Locale;
+const t = ui(lang);
+const priceVars = { price: PREMIUM_PRICE_USD, days: PREMIUM_PERIOD_DAYS };
+---
+
+<BaseLayout title={`${t.premiumTitle} · Pop Epoch Guides`} locale={lang} canonical={new URL(localizedPath(lang, "/premium/"), Astro.site)}>
+  <AppShell locale={lang} activeSection="" pageBackground="general" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.premiumBadge }]}>
+    <section class="section home-premium" aria-labelledby="premium-heading">
+      <div class="home-premium-panel panel">
+        <div class="home-premium-copy">
+          <span class="eyebrow">{t.premiumBadge}</span>
+          <h1 id="premium-heading">{t.premiumTitle}</h1>
+          <p>{fill(t.premiumLede, priceVars)}</p>
+          <ul class="home-premium-perks">
+            <li>{t.premiumPerkTools}</li>
+            <li>{t.premiumPerkGuild}</li>
+            <li>{t.premiumPerkSupport}</li>
+          </ul>
+          <p class="premium-soon">Checkout is not wired on this build yet.</p>
+        </div>
+        <p class="home-premium-price mono" aria-hidden="true">${PREMIUM_PRICE_USD}</p>
+      </div>
+    </section>
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .home-premium-copy h1 {
+    margin: 4px 0 8px;
+    font-size: clamp(1.45rem, 3vw, 1.9rem);
+  }
+  .premium-soon {
+    margin: 18px 0 0;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+  }
+</style>

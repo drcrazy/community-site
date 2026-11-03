@@ -1,0 +1,12 @@
+SESSION_SECRET=replace-with-a-long-random-string
+# One-time: when no admin exists, the first register with this username becomes admin.
+# BOOTSTRAP_ADMIN_USERNAME=your_admin_username
+# DISCORD_CLIENT_ID=
+# DISCORD_CLIENT_SECRET=
+# DISCORD_REDIRECT_URI=http://127.0.0.1:4321/api/auth/discord/callback
+# DISCORD_BOT_TOKEN=
+# DISCORD_GUILD_ID=
+# DISCORD_ROLE_EDITOR=
+# DISCORD_ROLE_ADMIN=
+# DISCORD_BENBEN_CHANNEL_ID=
+# DISCORD_BENBEN_MESSAGE_ID=

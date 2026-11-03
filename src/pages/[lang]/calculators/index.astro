@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import { CALCULATOR_LISTINGS } from "../../../lib/calculators/catalog";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const locale = Astro.params.lang as string;
+if (!isLocale(locale)) return Astro.redirect("/en/calculators/");
+const lang = locale as Locale;
+const t = ui(lang);
+---
+
+<BaseLayout title={`${t.calculators} · Pop Epoch Guides`} locale={lang} canonical={new URL(localizedPath(lang, "/calculators/"), Astro.site)}>
+  <AppShell locale={lang} activeSection="calculators" pageBackground="calculators" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.calculators }]}>
+    <div class="section-banner section-banner-calculators" aria-hidden="true">
+      <img class="section-banner-background" src="/banners/guides-scene.webp" alt="" />
+      <img class="section-banner-logo" src="/banners/calculators-logo.webp" alt="" />
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">{t.calculatorsEyebrow}</div>
+      <h1>{t.calculators}</h1>
+      <p>{t.calculatorsLede}</p>
+    </header>
+
+    <div class="card-grid">
+      {
+        CALCULATOR_LISTINGS.map((tool) => {
+          const premiumLocked = Boolean(tool.premium);
+          const href = premiumLocked
+            ? localizedPath(lang, "/premium/")
+            : localizedPath(lang, `/calculators/${tool.hrefId}/`);
+          const cardClass = ["tool-card", premiumLocked ? "tool-card-premium-locked" : ""].filter(Boolean).join(" ");
+          return (
+            <a class={cardClass} href={href}>
+              <div class="card-topline">
+                <div class="card-topline-badges"></div>
+                <span aria-hidden="true" class="arrow">↗</span>
+              </div>
+              <div class="tool-card-mark" aria-hidden="true">
+                <img src={tool.icon} alt="" width="64" height="64" loading="lazy" decoding="async" />
+              </div>
+              <h3>{tool.name}</h3>
+              <div class={premiumLocked ? "tool-card-body is-blurred" : "tool-card-body"}>
+                <p>{tool.description}</p>
+              </div>
+              {premiumLocked && (
+                <span class="premium-price-tag">
+                  <span class="premium-price-tag-brand">{t.premiumBadge}</span>
+                  <span class="premium-price-tag-meta">{t.premiumUnlockHint}</span>
+                </span>
+              )}
+            </a>
+          );
+        })
+      }
+    </div>
+  </AppShell>
+</BaseLayout>

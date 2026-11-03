@@ -1,0 +1,56 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import { MaterialsCalc } from "../../../components/calc/MaterialsCalc";
+import { GoddessXpCalc } from "../../../components/calc/GoddessXpCalc";
+import { SignetRingsCalc } from "../../../components/calc/SignetRingsCalc";
+import { CityUpgradeCalc } from "../../../components/calc/CityUpgradeCalc";
+import { GrandVoyageCalc } from "../../../components/calc/GrandVoyageCalc";
+import { FREE_CALCULATORS } from "../../../lib/calculators/catalog";
+import { GODDESS_MATERIALS, RED_CARPET_MATERIALS } from "../../../lib/calculators/event-materials";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+import "../../../styles/calc.css";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+const id = Astro.params.id ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/calculators/");
+const lang = langParam as Locale;
+const tool = FREE_CALCULATORS.find((item) => item.id === id);
+if (!tool) return Astro.redirect(localizedPath(lang, "/calculators/"));
+const t = ui(lang);
+---
+
+<BaseLayout title={`${tool.name} · Pop Epoch Guides`} description={tool.description} locale={lang} canonical={new URL(localizedPath(lang, `/calculators/${tool.id}/`), Astro.site)}>
+  <AppShell locale={lang} activeSection="calculators" pageBackground="calculators" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.calculators, href: localizedPath(lang, "/calculators/") }, { label: tool.name }]}>
+    <div class="page-head">
+      <h1>{tool.name}</h1>
+      <p>{tool.description}</p>
+    </div>
+
+    {tool.id === "goddess-materials" && <MaterialsCalc client:load materials={GODDESS_MATERIALS} />}
+    {tool.id === "red-carpet-materials" && <MaterialsCalc client:load materials={RED_CARPET_MATERIALS} />}
+    {tool.id === "goddess-xp" && <GoddessXpCalc client:load />}
+    {tool.id === "signet-rings" && <SignetRingsCalc client:load />}
+    {tool.id === "city-upgrade" && <CityUpgradeCalc client:load />}
+    {tool.id === "grand-voyage-route" && <GrandVoyageCalc client:load />}
+
+    <aside class="assumptions">
+      <h2>Assumptions</h2>
+      <ul>
+        {tool.assumptions.map((line) => <li>{line}</li>)}
+      </ul>
+    </aside>
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .page-head { margin-bottom: 20px; }
+  .page-head h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 3.4vw, 2.4rem); }
+  .page-head p { color: var(--ink-soft); max-width: 70ch; }
+  .assumptions { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .assumptions h2 { font-size: 1rem; margin: 0 0 8px; }
+  .assumptions ul { margin: 0; padding-left: 1.2em; color: var(--ink-soft); }
+</style>

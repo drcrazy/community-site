@@ -1,0 +1,102 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AppShell from "../../components/AppShell.astro";
+import { NewsHero } from "../../components/home/NewsHero";
+import { FREE_CALCULATORS } from "../../lib/calculators/catalog";
+import { pickLocalized } from "../../lib/content/localize";
+import { formatNewsDate, toDateTimeAttribute } from "../../lib/dates";
+import { isLocale, localizedPath, negotiateLocale, LOCALE_TAGS, type Locale } from "../../lib/i18n/locales";
+import { fill, ui } from "../../lib/i18n/ui";
+import { PREMIUM_PERIOD_DAYS, PREMIUM_PRICE_USD } from "../../lib/premium";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "en";
+if (!isLocale(langParam)) {
+  return Astro.redirect(`/${negotiateLocale(Astro.request.headers.get("accept-language"))}/`);
+}
+const locale = langParam as Locale;
+const t = ui(locale);
+const tag = LOCALE_TAGS[locale];
+
+const news = (await getCollection("news"))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf())
+  .slice(0, 4)
+  .map((entry) => ({
+    id: entry.id,
+    href: localizedPath(locale, `/news/${entry.id}/`),
+    title: pickLocalized(entry.data.title, locale),
+    summary: pickLocalized(entry.data.summary, locale),
+    dateLabel: formatNewsDate(entry.data.date, tag),
+    dateTime: toDateTimeAttribute(entry.data.date),
+  }));
+
+const guides = await getCollection("guides");
+const events = await getCollection("events");
+const toolsCount = FREE_CALCULATORS.length;
+const guidesCount = guides.length;
+const eventsCount = events.length;
+
+const premiumHref = localizedPath(locale, "/premium/");
+const priceVars = { price: PREMIUM_PRICE_USD, days: PREMIUM_PERIOD_DAYS };
+---
+
+<BaseLayout title={`Pop Epoch Guides · LoA Alexandria`} locale={locale} canonical={new URL(localizedPath(locale, "/"), Astro.site)}>
+  <AppShell locale={locale} activeSection="" pageBackground="general" crumbs={[{ label: t.overview }]}>
+    <NewsHero
+      client:load
+      entries={news}
+      labels={{
+        latestNews: t.latestNews,
+        allNews: t.allNews,
+        readMore: t.readMore,
+        newsPrevious: t.newsPrevious,
+        newsNext: t.newsNext,
+        newsPosition: t.newsPosition,
+        emptyTitle: t.news,
+        emptyLede: t.newsEmpty,
+        allNewsHref: localizedPath(locale, "/news/"),
+      }}
+    />
+
+    <section class="section home-premium" aria-labelledby="home-premium-heading">
+      <div class="home-premium-panel panel">
+        <div class="home-premium-copy">
+          <span class="eyebrow">{t.premiumBadge}</span>
+          <h2 id="home-premium-heading">{t.premiumTitle}</h2>
+          <p>{fill(t.premiumLede, priceVars)}</p>
+          <ul class="home-premium-perks">
+            <li>{t.premiumPerkTools}</li>
+            <li>{t.premiumPerkGuild}</li>
+            <li>{t.premiumPerkSupport}</li>
+          </ul>
+          <div class="home-premium-actions">
+            <a class="button button-primary" href={premiumHref} title={fill(t.buyPremium, { price: PREMIUM_PRICE_USD })}>
+              {fill(t.buyPremium, { price: PREMIUM_PRICE_USD })}
+            </a>
+            <a class="button button-secondary" href={premiumHref}>{t.premiumLearnMore}</a>
+          </div>
+        </div>
+        <p class="home-premium-price mono" aria-hidden="true">${PREMIUM_PRICE_USD}</p>
+      </div>
+    </section>
+
+    <section class="section" aria-label={t.siteEyebrow}>
+      <dl class="stat-row">
+        <div>
+          <dt>{t.statTools}</dt>
+          <dd>{new Intl.NumberFormat(tag).format(toolsCount)}</dd>
+        </div>
+        <div>
+          <dt>{t.statGuides}</dt>
+          <dd>{new Intl.NumberFormat(tag).format(guidesCount)}</dd>
+        </div>
+        <div>
+          <dt>{t.statEvents}</dt>
+          <dd>{new Intl.NumberFormat(tag).format(eventsCount)}</dd>
+        </div>
+      </dl>
+    </section>
+  </AppShell>
+</BaseLayout>

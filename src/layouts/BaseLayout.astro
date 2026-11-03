@@ -1,0 +1,61 @@
+---
+import "@fontsource-variable/inter";
+import "@fontsource-variable/sora";
+import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/jetbrains-mono/600.css";
+import "../styles/global.css";
+import "../styles/content-builder-local.css";
+import type { Locale } from "../lib/i18n/locales";
+import { LOCALE_TAGS } from "../lib/i18n/locales";
+
+interface Props {
+  title: string;
+  description?: string;
+  canonical?: URL | string;
+  ogType?: "website" | "article";
+  locale?: Locale;
+}
+
+const {
+  title,
+  description = "Community-built calculators, guides, and planners for Pop Epoch.",
+  canonical = Astro.url,
+  ogType = "website",
+  locale = "en",
+} = Astro.props;
+
+const canonicalHref = canonical instanceof URL ? canonical.href : String(canonical);
+const themeBootstrap = `(function(){try{var d=document.documentElement;var t=localStorage.getItem("popepoch-theme");if(t==="light"||t==="dark")d.dataset.theme=t;}catch(e){}})();`;
+---
+
+<!doctype html>
+<html lang={LOCALE_TAGS[locale]} class="fonts">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonicalHref} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalHref} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/favicon.ico" />
+    <title>{title}</title>
+    <script is:inline set:html={themeBootstrap} />
+    <style is:global>
+      .fonts {
+        --font-sora: "Sora Variable", "Sora", "Segoe UI", system-ui, sans-serif;
+        --font-inter: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-jetbrains-mono: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body style={`--page-texture: url("/backgrounds/texture-soft.webp");`}>
+    <slot />
+  </body>
+</html>

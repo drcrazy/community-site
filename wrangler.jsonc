@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "community-site",
+  "compatibility_date": "2026-10-01",
+  "main": "./src/worker.ts",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "community-site",
+      "database_id": "local-community-site",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "BENBEN",
+        "class_name": "BenbenDurableObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-benben",
+      "new_classes": ["BenbenDurableObject"]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import { AdminMembers } from "../../../components/admin/AdminMembers";
+import { allowsAdmin } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/admin/");
+const lang = langParam as Locale;
+if (!allowsAdmin(Astro.locals.member)) return Astro.redirect(localizedPath(lang, "/sign-in/"));
+const t = ui(lang, Astro.locals.uiOverrides);
+---
+
+<BaseLayout title={`Admin · Pop Epoch`} locale={lang}>
+  <AppShell locale={lang} activeSection="news" pageBackground="general" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: "Admin" }]}>
+    <div class="page-head">
+      <h1>Accounts</h1>
+      <p>Site rank, publish permission, and language assignments.</p>
+    </div>
+    <AdminMembers client:load />
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { margin: 0 0 8px; }
+  .page-head p { color: var(--ink-soft); }
+</style>

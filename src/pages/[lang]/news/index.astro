@@ -1,0 +1,102 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import EditorialBar from "../../../components/editorial/EditorialBar.astro";
+import { EntryActions } from "../../../components/editorial/EntryActions";
+import { formatNewsDate, toDateTimeAttribute } from "../../../lib/dates";
+import { contentBuilderEditHref, contentBuilderNewHref } from "../../../lib/content/editorial";
+import { pickLocalized } from "../../../lib/content/localize";
+import { loadPublishedList } from "../../../lib/content/public-read";
+import { allowsPrepare, allowsPublish } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, LOCALE_TAGS, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const locale = Astro.params.lang as string;
+if (!isLocale(locale)) return Astro.redirect("/en/news/");
+const lang = locale as Locale;
+const t = ui(lang, Astro.locals.uiOverrides);
+const member = Astro.locals.member;
+const canPrepare = allowsPrepare(member);
+const canPublish = allowsPublish(member);
+const published = await loadPublishedList("news", lang);
+const seed = published.length
+  ? []
+  : (await getCollection("news")).sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const cards = published.length
+  ? published.map((piece) => ({
+      slug: piece.slug,
+      href: localizedPath(lang, `/news/${piece.slug}/`),
+      title: piece.title,
+      summary: piece.summary,
+      date: piece.date ? new Date(piece.date) : new Date(piece.publishedAt),
+      editable: true,
+    }))
+  : seed.map((entry) => ({
+      slug: entry.id,
+      href: localizedPath(lang, `/news/${entry.id}/`),
+      title: pickLocalized(entry.data.title, lang),
+      summary: pickLocalized(entry.data.summary, lang),
+      date: entry.data.date,
+      editable: false,
+    }));
+---
+
+<BaseLayout title={`${t.news} · Pop Epoch Guides`} description={t.newsLede} locale={lang} canonical={new URL(localizedPath(lang, "/news/"), Astro.site)}>
+  <AppShell locale={lang} activeSection="news" pageBackground="news" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.news }]}>
+    <div class="section-banner section-banner-news" aria-hidden="true">
+      <img class="section-banner-background" src="/banners/guides-scene.webp" alt="" />
+      <img class="section-banner-logo" src="/banners/news-logo.webp" alt="" />
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">{t.newsEyebrow}</div>
+      <h1>{t.news}</h1>
+      <p>{t.newsLede}</p>
+    </header>
+
+    <EditorialBar canPrepare={canPrepare} newHref={contentBuilderNewHref(lang, "news")} newLabel="New news" />
+
+    {
+      cards.length === 0 ? (
+        <div class="empty-state">{t.newsEmpty}</div>
+      ) : (
+        <div class="news-grid">
+          {cards.map((entry) => (
+            <article class="news-card">
+              <a class="news-card-link" href={entry.href}>
+                <div class="news-card-art" aria-hidden="true">
+                  <span>✦</span>
+                </div>
+                <div class="news-card-content">
+                  <time class="news-card-date" datetime={toDateTimeAttribute(entry.date)}>
+                    {formatNewsDate(entry.date, LOCALE_TAGS[lang])}
+                  </time>
+                  <h2>{entry.title}</h2>
+                  <p class="news-card-excerpt">{entry.summary}</p>
+                  <span class="news-card-read">
+                    {t.readMore} <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </a>
+              {entry.editable ? (
+                <EntryActions
+                  client:load
+                  kind="news"
+                  slug={entry.slug}
+                  title={entry.title}
+                  editHref={contentBuilderEditHref(lang, "news", entry.slug)}
+                  canPrepare={canPrepare}
+                  canPublish={canPublish}
+                />
+              ) : null}
+            </article>
+          ))}
+        </div>
+      )
+    }
+  </AppShell>
+</BaseLayout>

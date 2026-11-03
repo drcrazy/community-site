@@ -1,0 +1,31 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import { BenbenCare } from "../../../components/benben/BenbenCare";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/benben/");
+const lang = langParam as Locale;
+const t = ui(lang, Astro.locals.uiOverrides);
+const signedIn = Boolean(Astro.locals.member);
+---
+
+<BaseLayout title={`Benben · Pop Epoch`} locale={lang}>
+  <AppShell locale={lang} activeSection="news" pageBackground="general" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: "Benben" }]}>
+    <div class="page-head">
+      <h1>Benben</h1>
+      <p>The community stone pyramid. Signed-in members get three care actions per UTC day.</p>
+    </div>
+    <BenbenCare client:load signedIn={signedIn} signInHref={localizedPath(lang, "/sign-in/")} />
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .page-head { margin-bottom: 18px; }
+  .page-head h1 { margin: 0 0 8px; }
+  .page-head p { color: var(--ink-soft); }
+</style>

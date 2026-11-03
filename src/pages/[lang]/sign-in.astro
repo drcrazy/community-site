@@ -1,0 +1,155 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import AppShell from "../../components/AppShell.astro";
+import { isLocale, localizedPath, type Locale } from "../../lib/i18n/locales";
+import { ui } from "../../lib/i18n/ui";
+
+export const prerender = false;
+
+const locale = Astro.params.lang as string;
+if (!isLocale(locale)) return Astro.redirect("/en/sign-in/");
+const lang = locale as Locale;
+const t = ui(lang);
+const discordEnabled = Astro.locals.discordEnabled;
+const member = Astro.locals.member;
+if (member) return Astro.redirect(localizedPath(lang, "/"));
+---
+
+<BaseLayout title={`${t.signIn} · Pop Epoch Guides`} locale={lang} canonical={new URL(localizedPath(lang, "/sign-in/"), Astro.site)}>
+  <AppShell locale={lang} activeSection="" pageBackground="general" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.signIn }]}>
+    <div
+      class="auth"
+      data-locale={lang}
+      data-discord-enabled={discordEnabled ? "1" : "0"}
+      data-label-create={t.createAccount}
+      data-label-have-account={t.haveAccount}
+    >
+      <h1>{t.signIn}</h1>
+      <p class="lede">Sign in with a username and password. A first account is a Normal user.</p>
+      <p class="error" hidden></p>
+
+      <form class="auth-form" data-mode="sign-in">
+        <label>
+          <span>{t.username}</span>
+          <input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" />
+        </label>
+        <label>
+          <span>{t.password}</span>
+          <input name="password" type="password" autocomplete="current-password" required minlength="8" />
+        </label>
+        <button class="button button-primary" type="submit">{t.signIn}</button>
+      </form>
+
+      <form class="auth-form" data-mode="register" hidden>
+        <label>
+          <span>{t.username}</span>
+          <input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_]+" />
+        </label>
+        <label>
+          <span>{t.password}</span>
+          <input name="password" type="password" autocomplete="new-password" required minlength="8" />
+        </label>
+        <button class="button button-primary" type="submit">{t.createAccount}</button>
+      </form>
+
+      <button type="button" class="linkish" data-toggle-auth>{t.createAccount}</button>
+
+      <button type="button" class="button" disabled={!discordEnabled} data-discord>
+        Discord
+      </button>
+      {!discordEnabled && <p class="hint">{t.discordUnavailable}</p>}
+    </div>
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .auth { max-width: 420px; display: grid; gap: 14px; }
+  h1 { margin: 0; font-size: clamp(1.8rem, 3vw, 2.4rem); }
+  .lede, .hint { color: var(--ink-soft); margin: 0; }
+  .error { color: var(--bad); margin: 0; }
+  .auth-form { display: grid; gap: 12px; }
+  .auth-form[hidden] { display: none; }
+  label { display: grid; gap: 6px; font-size: 0.86rem; font-weight: 600; }
+  input {
+    min-height: 44px; padding: 0 12px;
+    border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+    background: var(--surface);
+  }
+  .linkish {
+    border: 0; background: transparent; color: var(--accent);
+    text-align: left; padding: 0; cursor: pointer; font: inherit;
+  }
+</style>
+
+<script>
+  const root = document.querySelector(".auth");
+  if (root instanceof HTMLElement) {
+    const locale = root.dataset.locale || "en";
+    const errorEl = root.querySelector(".error");
+    const signInForm = root.querySelector('form[data-mode="sign-in"]');
+    const registerForm = root.querySelector('form[data-mode="register"]');
+    const toggle = root.querySelector("[data-toggle-auth]");
+    const discordBtn = root.querySelector("[data-discord]");
+
+    function showError(message: string) {
+      if (!(errorEl instanceof HTMLElement)) return;
+      errorEl.hidden = !message;
+      errorEl.textContent = message;
+    }
+
+    toggle?.addEventListener("click", () => {
+      const registering = registerForm && !registerForm.hasAttribute("hidden");
+      const createLabel = root.dataset.labelCreate || "Create an account";
+      const haveAccountLabel = root.dataset.labelHaveAccount || "Already have an account? Sign in";
+      if (registering) {
+        registerForm?.setAttribute("hidden", "");
+        signInForm?.removeAttribute("hidden");
+        if (toggle instanceof HTMLElement) toggle.textContent = createLabel;
+      } else {
+        signInForm?.setAttribute("hidden", "");
+        registerForm?.removeAttribute("hidden");
+        if (toggle instanceof HTMLElement) toggle.textContent = haveAccountLabel;
+      }
+      showError("");
+    });
+
+    async function submit(mode: "sign-in" | "register", form: HTMLFormElement) {
+      showError("");
+      const data = new FormData(form);
+      const body = {
+        username: String(data.get("username") || ""),
+        password: String(data.get("password") || ""),
+      };
+      const path = mode === "register" ? "/api/auth/register/" : "/api/auth/sign-in/";
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json().catch(() => ({}))) as { message?: unknown; code?: unknown };
+      if (!res.ok) {
+        const message =
+          typeof json.message === "string"
+            ? json.message
+            : mode === "register"
+              ? "Could not create the account."
+              : "Sign-in failed.";
+        showError(message);
+        return;
+      }
+      window.location.href = `/${locale}/`;
+    }
+
+    signInForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (event.currentTarget instanceof HTMLFormElement) void submit("sign-in", event.currentTarget);
+    });
+    registerForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (event.currentTarget instanceof HTMLFormElement) void submit("register", event.currentTarget);
+    });
+    discordBtn?.addEventListener("click", () => {
+      window.location.href = "/api/auth/discord/start/";
+    });
+  }
+</script>

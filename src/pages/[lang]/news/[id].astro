@@ -1,0 +1,66 @@
+---
+import { getEntry } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import EditorialBar from "../../../components/editorial/EditorialBar.astro";
+import { EntryActions } from "../../../components/editorial/EntryActions";
+import NewsArticle from "../../../components/NewsArticle.astro";
+import { PublishedPieceView } from "../../../components/content/PublishedPieceView";
+import { contentBuilderEditHref, contentBuilderNewHref } from "../../../lib/content/editorial";
+import { pickLocalized } from "../../../lib/content/localize";
+import { loadPublishedPiece } from "../../../lib/content/public-read";
+import { allowsPrepare, allowsPublish } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+const id = Astro.params.id ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/news/");
+const lang = langParam as Locale;
+const published = await loadPublishedPiece("news", id, lang);
+const entry = published ? null : await getEntry("news", id);
+if (!published && !entry) return Astro.redirect(localizedPath(lang, "/news/"));
+const t = ui(lang, Astro.locals.uiOverrides);
+const member = Astro.locals.member;
+const canPrepare = allowsPrepare(member);
+const canPublish = allowsPublish(member);
+const title = published ? published.title : pickLocalized(entry!.data.title, lang);
+const summary = published ? published.summary : pickLocalized(entry!.data.summary, lang);
+---
+
+<BaseLayout title={`${title} · Pop Epoch Guides`} description={summary} locale={lang} ogType="article" canonical={new URL(localizedPath(lang, `/news/${id}/`), Astro.site)}>
+  <AppShell locale={lang} activeSection="news" pageBackground="news" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.news, href: localizedPath(lang, "/news/") }, { label: title }]}>
+    <EditorialBar canPrepare={canPrepare} newHref={contentBuilderNewHref(lang, "news")} newLabel="New news" />
+    {
+      published ? (
+        <div>
+          <a class="back" href={localizedPath(lang, "/news/")}>← {t.backToNews}</a>
+          <EntryActions
+            client:load
+            kind="news"
+            slug={id}
+            title={title}
+            editHref={contentBuilderEditHref(lang, "news", id)}
+            canPrepare={canPrepare}
+            canPublish={canPublish}
+          />
+          <PublishedPieceView
+            client:load
+            title={published.title}
+            summary={published.summary}
+            body={published.body}
+            contentCanvas={published.contentCanvas}
+          />
+        </div>
+      ) : (
+        <NewsArticle entry={entry!} locale={lang} />
+      )
+    }
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .back { display: inline-block; margin-bottom: 16px; color: var(--accent); }
+</style>

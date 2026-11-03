@@ -1,0 +1,85 @@
+---
+import { getEntry, render } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import EditorialBar from "../../../components/editorial/EditorialBar.astro";
+import { EntryActions } from "../../../components/editorial/EntryActions";
+import { PublishedPieceView } from "../../../components/content/PublishedPieceView";
+import { contentBuilderEditHref, contentBuilderNewHref } from "../../../lib/content/editorial";
+import { EVENT_CATEGORY_LABELS, pickLocalized } from "../../../lib/content/localize";
+import { loadPublishedPiece } from "../../../lib/content/public-read";
+import { allowsPrepare, allowsPublish } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const langParam = Astro.params.lang ?? "";
+const id = Astro.params.id ?? "";
+if (!isLocale(langParam)) return Astro.redirect("/en/events/");
+const lang = langParam as Locale;
+const published = await loadPublishedPiece("event", id, lang);
+const t = ui(lang, Astro.locals.uiOverrides);
+const member = Astro.locals.member;
+const canPrepare = allowsPrepare(member);
+const canPublish = allowsPublish(member);
+
+const entry = published ? null : await getEntry("events", id);
+if (!published && !entry) return Astro.redirect(localizedPath(lang, "/events/"));
+
+const rendered = entry ? await render(entry) : null;
+const Content = rendered?.Content;
+
+const title = published ? published.title : pickLocalized(entry!.data.title, lang);
+const summary = published ? published.summary : pickLocalized(entry!.data.summary, lang);
+const categoryLabel = published
+  ? EVENT_CATEGORY_LABELS[published.categoryId ?? ""] ?? published.categoryId
+  : EVENT_CATEGORY_LABELS[entry!.data.category];
+---
+
+<BaseLayout title={`${title} · Pop Epoch Guides`} description={summary} locale={lang} ogType="article" canonical={new URL(localizedPath(lang, `/events/${id}/`), Astro.site)}>
+  <AppShell locale={lang} activeSection="events" pageBackground="events" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.events, href: localizedPath(lang, "/events/") }, { label: title }]}>
+    <EditorialBar canPrepare={canPrepare} newHref={contentBuilderNewHref(lang, "event")} newLabel="New event" />
+    {
+      published ? (
+        <>
+          <p class="eyebrow">{categoryLabel}</p>
+          <EntryActions
+            client:load
+            kind="event"
+            slug={id}
+            title={title}
+            editHref={contentBuilderEditHref(lang, "event", id)}
+            canPrepare={canPrepare}
+            canPublish={canPublish}
+          />
+          <PublishedPieceView
+            client:load
+            title={published.title}
+            summary={published.summary}
+            intro={published.intro}
+            note={published.note}
+            sections={published.sections}
+            contentCanvas={published.contentCanvas}
+          />
+        </>
+      ) : Content ? (
+        <article class="reader">
+          <p class="eyebrow">{categoryLabel}</p>
+          <h1>{title}</h1>
+          <p class="summary">{summary}</p>
+          <div class="body"><Content /></div>
+        </article>
+      ) : null
+    }
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .reader { max-width: 900px; }
+  .eyebrow { color: var(--accent); font-size: 0.72rem; font-weight: 600; margin-bottom: 12px; }
+  h1 { font-size: clamp(2rem, 4vw, 3rem); margin: 0 0 12px; }
+  .summary { color: var(--ink-soft); font-size: 1.1rem; line-height: 1.7; margin-bottom: 28px; max-width: 65ch; }
+  .body { display: grid; gap: 1.1em; line-height: 1.85; }
+  .body :global(p) { margin: 0; }
+</style>

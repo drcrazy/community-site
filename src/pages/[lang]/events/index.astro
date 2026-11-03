@@ -1,0 +1,80 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import EditorialBar from "../../../components/editorial/EditorialBar.astro";
+import { EventsIndex } from "../../../components/events/EventsIndex";
+import { contentBuilderEditHref, contentBuilderNewHref } from "../../../lib/content/editorial";
+import { EVENT_CATEGORY_LABELS, pickLocalized } from "../../../lib/content/localize";
+import { loadPublishedList } from "../../../lib/content/public-read";
+import { allowsPrepare, allowsPublish } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const locale = Astro.params.lang as string;
+if (!isLocale(locale)) return Astro.redirect("/en/events/");
+const lang = locale as Locale;
+const t = ui(lang, Astro.locals.uiOverrides);
+const member = Astro.locals.member;
+const canPrepare = allowsPrepare(member);
+const canPublish = allowsPublish(member);
+const categoryOrder = ["main-event", "routine-event", "ranking-challenge"] as const;
+const published = await loadPublishedList("event", lang);
+const entries = published.length
+  ? published.map((piece) => ({
+      id: piece.slug,
+      href: localizedPath(lang, `/events/${piece.slug}/`),
+      title: piece.title,
+      summary: piece.summary,
+      category: piece.categoryId ?? "main-event",
+      categoryLabel: EVENT_CATEGORY_LABELS[piece.categoryId ?? ""] ?? piece.categoryId ?? "",
+      icon: piece.icon ?? null,
+      editable: true,
+      editHref: contentBuilderEditHref(lang, "event", piece.slug),
+    }))
+  : (await getCollection("events"))
+      .sort((a, b) => a.data.position - b.data.position)
+      .map((entry) => ({
+        id: entry.id,
+        href: localizedPath(lang, `/events/${entry.id}/`),
+        title: pickLocalized(entry.data.title, lang),
+        summary: pickLocalized(entry.data.summary, lang),
+        category: entry.data.category,
+        categoryLabel: EVENT_CATEGORY_LABELS[entry.data.category] ?? entry.data.category,
+        icon: entry.data.icon ?? null,
+        editable: false,
+      }));
+---
+
+<BaseLayout title={`${t.events} · Pop Epoch Guides`} locale={lang} canonical={new URL(localizedPath(lang, "/events/"), Astro.site)}>
+  <AppShell locale={lang} activeSection="events" pageBackground="events" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.events }]}>
+    <div class="section-banner section-banner-events" aria-hidden="true">
+      <img class="section-banner-background" src="/banners/guides-scene.webp" alt="" />
+      <img class="section-banner-logo" src="/banners/events-logo.webp" alt="" />
+    </div>
+
+    <header class="page-head">
+      <div class="eyebrow">{t.eventsEyebrow}</div>
+      <h1>{t.events}</h1>
+      <p>{t.eventsLede}</p>
+    </header>
+
+    <EditorialBar canPrepare={canPrepare} newHref={contentBuilderNewHref(lang, "event")} newLabel="New event" />
+
+    <EventsIndex
+      client:load
+      entries={entries}
+      categoryOrder={[...categoryOrder]}
+      editorial={{ canPrepare, canPublish }}
+      labels={{
+        searchLabel: t.eventsSearchLabel,
+        searchPlaceholder: t.eventsSearchPlaceholder,
+        statEntries: t.eventsStatEntries,
+        noMatch: t.eventsNoMatch,
+        empty: t.eventsEmpty,
+      }}
+    />
+  </AppShell>
+</BaseLayout>

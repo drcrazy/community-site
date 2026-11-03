@@ -1,0 +1,12 @@
+.calc { display: grid; gap: 12px; max-width: 720px; }
+.calc-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 10px; align-items: center; }
+.calc-row input, .calc-row select {
+  min-height: 40px; padding: 0 10px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface);
+}
+.calc-result { margin: 8px 0 0; padding: 14px 16px; border-radius: 12px; background: var(--accent-soft); }
+.calc-error { color: var(--bad); margin: 0; }
+.calc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.calc-check { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }
+.tool-assumptions { margin-top: 18px; color: var(--ink-soft); font-size: 0.9rem; max-width: 70ch; }
+.tool-assumptions ul { margin: 8px 0 0; padding-left: 1.2rem; list-style: disc; }

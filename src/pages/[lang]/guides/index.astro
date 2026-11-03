@@ -1,0 +1,104 @@
+---
+import { getCollection } from "astro:content";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AppShell from "../../../components/AppShell.astro";
+import EditorialBar from "../../../components/editorial/EditorialBar.astro";
+import { EntryActions } from "../../../components/editorial/EntryActions";
+import { contentBuilderEditHref, contentBuilderNewHref } from "../../../lib/content/editorial";
+import { GUIDE_CATEGORY_LABELS, pickLocalized } from "../../../lib/content/localize";
+import { loadPublishedList } from "../../../lib/content/public-read";
+import { allowsPrepare, allowsPublish } from "../../../lib/auth/permissions";
+import { isLocale, localizedPath, type Locale } from "../../../lib/i18n/locales";
+import { ui } from "../../../lib/i18n/ui";
+
+export const prerender = false;
+
+const locale = Astro.params.lang as string;
+if (!isLocale(locale)) return Astro.redirect("/en/guides/");
+const lang = locale as Locale;
+const t = ui(lang, Astro.locals.uiOverrides);
+const member = Astro.locals.member;
+const canPrepare = allowsPrepare(member);
+const canPublish = allowsPublish(member);
+const published = await loadPublishedList("guide", lang);
+const entries = published.length
+  ? published.map((piece) => ({
+      id: piece.slug,
+      href: localizedPath(lang, `/guides/${piece.slug}/`),
+      title: piece.title,
+      summary: piece.summary,
+      category: piece.categoryId ?? "core-elements",
+      categoryLabel: GUIDE_CATEGORY_LABELS[piece.categoryId ?? ""] ?? piece.categoryId ?? "",
+      editable: true,
+    }))
+  : (await getCollection("guides"))
+      .sort((a, b) => a.data.position - b.data.position)
+      .map((entry) => ({
+        id: entry.id,
+        href: localizedPath(lang, `/guides/${entry.id}/`),
+        title: pickLocalized(entry.data.title, lang),
+        summary: pickLocalized(entry.data.summary, lang),
+        category: entry.data.category,
+        categoryLabel: GUIDE_CATEGORY_LABELS[entry.data.category],
+        editable: false,
+      }));
+---
+
+<BaseLayout title={`${t.guides} · Pop Epoch Guides`} locale={lang} canonical={new URL(localizedPath(lang, "/guides/"), Astro.site)}>
+  <AppShell locale={lang} activeSection="guides" pageBackground="guides" crumbs={[{ label: t.overview, href: localizedPath(lang, "/") }, { label: t.guides }]}>
+    <div class="page-head">
+      <h1>{t.guides}</h1>
+      <p>Published guides grouped by category.</p>
+    </div>
+
+    <EditorialBar canPrepare={canPrepare} newHref={contentBuilderNewHref(lang, "guide")} newLabel="New guide" />
+
+    <ul class="card-list">
+      {
+        entries.map((entry) => (
+          <li>
+            <a href={entry.href}>
+              <span class="eyebrow">{entry.categoryLabel}</span>
+              <strong>{entry.title}</strong>
+              <span>{entry.summary}</span>
+            </a>
+            {entry.editable ? (
+              <EntryActions
+                client:load
+                kind="guide"
+                slug={entry.id}
+                title={entry.title}
+                editHref={contentBuilderEditHref(lang, "guide", entry.id)}
+                canPrepare={canPrepare}
+                canPublish={canPublish}
+              />
+            ) : null}
+          </li>
+        ))
+      }
+    </ul>
+  </AppShell>
+</BaseLayout>
+
+<style>
+  .page-head { margin-bottom: 24px; }
+  .page-head h1 { margin: 0 0 10px; font-size: clamp(1.75rem, 3.6vw, 2.6rem); }
+  .page-head p { color: var(--ink-soft); }
+  .card-list { display: grid; gap: 14px; max-width: 900px; }
+  .card-list a {
+    display: grid; gap: 8px; padding: 22px 24px;
+    border: 1px solid var(--line); border-radius: 18px 18px 0 0; background: var(--surface);
+  }
+  .card-list li:not(:has(.entry-actions)) a { border-radius: 18px; }
+  .card-list li:has(.entry-actions) {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .card-list li:has(.entry-actions) a { border: 0; border-radius: 0; background: transparent; }
+  .card-list a:hover { background: var(--accent-soft); }
+  .eyebrow { color: var(--accent); font-size: 0.72rem; font-weight: 600; }
+  .card-list strong { font-family: var(--font-display); font-size: 1.25rem; }
+  .card-list span:last-child { color: var(--ink-soft); line-height: 1.7; }
+</style>

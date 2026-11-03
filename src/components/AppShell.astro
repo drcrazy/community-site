@@ -1,0 +1,191 @@
+---
+import Icon from "./Icons.astro";
+import type { Locale } from "../lib/i18n/locales";
+import { LOCALES, LOCALE_LABELS, localizedPath, swapLocaleInPath } from "../lib/i18n/locales";
+import { ui, fill } from "../lib/i18n/ui";
+import { allowsAdmin, allowsAnyTranslate, allowsPrepare } from "../lib/auth/permissions";
+import { AccountMenu } from "./AccountMenu";
+import { PREMIUM_PRICE_USD } from "../lib/premium";
+
+interface Props {
+  locale: Locale;
+  activeSection?: string;
+  pageBackground?: "news" | "general" | "guides" | "events" | "calculators";
+  crumbs?: { label: string; href?: string }[];
+}
+
+const {
+  locale,
+  activeSection = "news",
+  pageBackground = "news",
+  crumbs,
+} = Astro.props;
+
+const t = ui(locale, Astro.locals.uiOverrides);
+const member = Astro.locals.member;
+const discordEnabled = Astro.locals.discordEnabled;
+const canPrepare = allowsPrepare(member);
+const canTranslate = allowsAnyTranslate(member);
+const canAdmin = allowsAdmin(member);
+const pathCrumbs = crumbs ?? [{ label: t.overview, href: localizedPath(locale, "/") }];
+
+const sections = [
+  { id: "news", href: localizedPath(locale, "/news/"), label: t.news, icon: "news" as const },
+  { id: "guides", href: localizedPath(locale, "/guides/"), label: t.guides, icon: "guides" as const },
+  { id: "events", href: localizedPath(locale, "/events/"), label: t.events, icon: "events" as const },
+  { id: "calculators", href: localizedPath(locale, "/calculators/"), label: t.calculators, icon: "calculators" as const },
+];
+
+const bg = ["news", "guides", "events", "calculators"].includes(pageBackground)
+  ? pageBackground
+  : "general";
+---
+
+<a class="skip-link" href="#content">Skip to content</a>
+
+<div class="layout-root is-nav-collapsed">
+  <aside class="nav-shell" aria-label="Section">
+    <div class="nav-rail">
+      <a class="rail-brand" href={localizedPath(locale, "/")} title="Pop Epoch Tools" aria-label="Pop Epoch Tools">
+        <span class="brand-mark"><Icon name="brand" /></span>
+      </a>
+      <nav class="rail-nav" aria-label="Section">
+        <a class="rail-link" href={localizedPath(locale, "/")} title={t.overview} aria-label={t.overview}>
+          <Icon name="home" />
+        </a>
+        {
+          sections.map((section) => (
+            <a
+              class:list={["rail-link", { "is-active": section.id === activeSection }]}
+              href={section.href}
+              title={section.label}
+              aria-label={section.label}
+              aria-current={section.id === activeSection ? "page" : undefined}
+            >
+              <Icon name={section.icon} />
+            </a>
+          ))
+        }
+      </nav>
+      <div class="rail-foot">
+        <button type="button" class="icon-button" id="theme-toggle" aria-label="Switch theme" title="Switch theme">
+          <Icon name="sun" class="icon theme-icon-sun" />
+          <Icon name="moon" class="icon theme-icon-moon" />
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="layout-main">
+    <header class="topbar">
+      <button type="button" class="icon-button topbar-menu" aria-label="Open navigation">
+        <Icon name="menu" />
+      </button>
+      <nav class="topbar-crumbs" aria-label="You are here">
+        <ol>
+          {
+            pathCrumbs.map((crumb, index) => (
+              <li>
+                {index > 0 && <span class="topbar-sep" aria-hidden="true">/</span>}
+                {crumb.href ? (
+                  <a class="topbar-crumb" href={crumb.href}>{crumb.label}</a>
+                ) : (
+                  <span class="topbar-crumb is-current" aria-current="page">{crumb.label}</span>
+                )}
+              </li>
+            ))
+          }
+        </ol>
+      </nav>
+      <span class="topbar-spacer"></span>
+      <AccountMenu
+        client:load
+        locale={locale}
+        displayName={member ? member.displayName || member.username : null}
+        caps={{ canPrepare, canTranslate, canAdmin }}
+        labels={{
+          signIn: t.signIn,
+          signOut: t.signOut,
+          accountMenu: "Account",
+          buyPremium: fill(t.buyPremium, { price: PREMIUM_PRICE_USD }),
+          contentBuilder: "Content Builder",
+          interfaceStrings: "Interface strings",
+          admin: "Admin",
+          benben: "Benben",
+        }}
+        hrefs={{
+          signIn: localizedPath(locale, "/sign-in/"),
+          premium: localizedPath(locale, "/premium/"),
+          contentBuilder: localizedPath(locale, "/content-builder/"),
+          interfaceStrings: localizedPath(locale, "/interface-strings/"),
+          admin: localizedPath(locale, "/admin/"),
+          benben: localizedPath(locale, "/benben/"),
+        }}
+      />
+      <details class="lang">
+        <summary class="icon-button" aria-label="Language" title="Language">
+          <Icon name="globe" />
+          <span class="lang-code">{locale.toUpperCase()}</span>
+        </summary>
+        <div class="menu-pop">
+          {
+            LOCALES.map((item) => (
+              <a
+                class:list={["lang-option", { "is-active": item === locale }]}
+                href={swapLocaleInPath(Astro.url.pathname, item)}
+              >
+                <span class="lang-short">{item.toUpperCase()}</span>
+                {LOCALE_LABELS[item]}
+              </a>
+            ))
+          }
+        </div>
+      </details>
+    </header>
+
+    <main class="content" id="content" style={`--page-bg: url("/backgrounds/bg-${bg === "calculators" || bg === "guides" || bg === "events" || bg === "news" ? (bg === "calculators" ? "calculators" : bg === "guides" ? "guides" : bg === "events" ? "events" : "news") : "general"}.webp");`}>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <p>
+        LoA Alexandria · community tools for Pop Epoch. An unofficial fan project, not affiliated
+        with or endorsed by the game’s publisher. All game names belong to their respective owners.
+      </p>
+      {!discordEnabled && <span class="site-footer-link">{t.discordUnavailable}</span>}
+    </footer>
+  </div>
+</div>
+
+<style is:global>
+  .theme-icon-moon { display: none; }
+  :root[data-theme="dark"] .theme-icon-sun { display: none; }
+  :root[data-theme="dark"] .theme-icon-moon { display: block; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon-sun { display: none; }
+    :root:not([data-theme="light"]) .theme-icon-moon { display: block; }
+  }
+  .lang { position: relative; }
+  .lang > summary { list-style: none; }
+  .lang > summary::-webkit-details-marker { display: none; }
+</style>
+
+<script>
+  document.getElementById("theme-toggle")?.addEventListener("click", () => {
+    const root = document.documentElement;
+    const next =
+      root.dataset.theme === "light"
+        ? "dark"
+        : root.dataset.theme === "dark"
+          ? "light"
+          : window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "light"
+            : "dark";
+    root.dataset.theme = next;
+    try {
+      localStorage.setItem("popepoch-theme", next);
+    } catch {
+      /* ignore */
+    }
+  });
+</script>

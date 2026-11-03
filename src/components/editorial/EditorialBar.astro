@@ -1,0 +1,26 @@
+---
+interface Props {
+  canPrepare: boolean;
+  newHref: string;
+  newLabel: string;
+}
+
+const { canPrepare, newHref, newLabel } = Astro.props;
+---
+
+{
+  canPrepare ? (
+    <div class="editorial-bar">
+      <a class="button button-primary" href={newHref}>{newLabel}</a>
+    </div>
+  ) : null
+}
+
+<style>
+  .editorial-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 0 0 18px;
+  }
+</style>

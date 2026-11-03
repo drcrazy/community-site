@@ -1,0 +1,85 @@
+---
+import type { CollectionEntry } from "astro:content";
+import { render } from "astro:content";
+import { formatNewsDate, toDateTimeAttribute } from "../lib/dates";
+import { pickLocalized } from "../lib/content/localize";
+import type { Locale } from "../lib/i18n/locales";
+import { localizedPath } from "../lib/i18n/locales";
+import { ui } from "../lib/i18n/ui";
+import { LOCALE_TAGS } from "../lib/i18n/locales";
+
+interface Props {
+  entry: CollectionEntry<"news">;
+  locale: Locale;
+}
+
+const { entry, locale } = Astro.props;
+const { Content } = await render(entry);
+const title = pickLocalized(entry.data.title, locale);
+const summary = pickLocalized(entry.data.summary, locale);
+const dateLabel = formatNewsDate(entry.data.date, LOCALE_TAGS[locale]);
+const dateTime = toDateTimeAttribute(entry.data.date);
+const t = ui(locale);
+---
+
+<div class="reader">
+  <a class="back" href={localizedPath(locale, "/news/")}>← {t.backToNews}</a>
+  <article>
+    <header class="article-head">
+      <time class="date" datetime={dateTime}>{dateLabel}</time>
+      <h1>{title}</h1>
+      <p>{summary}</p>
+    </header>
+    <div class="body">
+      <Content />
+    </div>
+    <footer class="footer">
+      <a class="small-button" href={localizedPath(locale, "/news/")}>{t.backToNews}</a>
+    </footer>
+  </article>
+</div>
+
+<style>
+  .reader { max-width: 900px; margin: 0 auto; }
+  .back { display: inline-block; margin-bottom: 28px; color: var(--accent); }
+  .article-head {
+    padding: 32px 0;
+    border-top: 3px solid var(--accent);
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 32px;
+  }
+  .article-head h1 {
+    font-size: clamp(2rem, 4vw, 3.4rem);
+    line-height: 1.15;
+    margin: 16px 0;
+    text-wrap: balance;
+  }
+  .article-head p {
+    font-size: 1.15rem;
+    line-height: 1.8;
+    color: var(--ink-soft);
+    max-width: 65ch;
+  }
+  .date {
+    color: var(--ink-soft);
+    font-size: 0.8rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+  }
+  .body {
+    display: grid;
+    gap: 1.15em;
+    line-height: 1.85;
+    overflow-wrap: anywhere;
+  }
+  .body :global(p) { color: var(--ink); margin: 0; }
+  .footer {
+    border-top: 1px solid var(--line);
+    padding-top: 28px;
+    margin-top: 36px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+</style>
