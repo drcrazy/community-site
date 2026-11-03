@@ -28,7 +28,7 @@
   "migrations": [
     {
       "tag": "v1-benben",
-      "new_classes": ["BenbenDurableObject"]
+      "new_sqlite_classes": ["BenbenDurableObject"]
     }
   ]
 }
