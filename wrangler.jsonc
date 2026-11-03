@@ -3,6 +3,12 @@
   "name": "community-site",
   "compatibility_date": "2026-10-01",
   "main": "./src/worker.ts",
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "b5080bc9bc3f461783b57d843b5df7d1"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
