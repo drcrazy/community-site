@@ -5,6 +5,12 @@ export type BenbenNeeds = {
   rest: number;
 };
 
+export type BenbenCareEntry = {
+  name: string;
+  action: CareAction;
+  at: string;
+};
+
 export type BenbenState = {
   needs: BenbenNeeds;
   journeyLandscape: number;
@@ -13,6 +19,10 @@ export type BenbenState = {
   phoenixUntil: string | null;
   lastDecayAt: string;
   careLog: Record<string, { date: string; count: number }>;
+  totalCares: number;
+  streak: number;
+  streakDay: string | null;
+  recent: BenbenCareEntry[];
 };
 
 export type CareAction = "feed" | "polish" | "sunbathe" | "rest";
@@ -28,6 +38,25 @@ export function defaultBenbenState(now = new Date()): BenbenState {
     phoenixUntil: null,
     lastDecayAt: now.toISOString(),
     careLog: {},
+    totalCares: 0,
+    streak: 0,
+    streakDay: null,
+    recent: [],
+  };
+}
+
+export function normalizeBenbenState(raw: Partial<BenbenState> | null | undefined, now = new Date()): BenbenState {
+  const base = defaultBenbenState(now);
+  if (!raw) return base;
+  return {
+    ...base,
+    ...raw,
+    needs: { ...base.needs, ...(raw.needs ?? {}) },
+    careLog: raw.careLog ?? {},
+    totalCares: raw.totalCares ?? 0,
+    streak: raw.streak ?? 0,
+    streakDay: raw.streakDay ?? null,
+    recent: Array.isArray(raw.recent) ? raw.recent.slice(0, 8) : [],
   };
 }
 
@@ -73,8 +102,9 @@ export function applyCare(
   memberId: string,
   action: CareAction,
   now = new Date(),
+  caretakerName = "Someone",
 ): { ok: true; state: BenbenState } | { ok: false; reason: string; state: BenbenState } {
-  const current = applyHourlyDecay(state, now);
+  const current = applyHourlyDecay(normalizeBenbenState(state, now), now);
   const count = careCountToday(current, memberId, now);
   if (count >= 3) return { ok: false, reason: "daily_limit", state: current };
 
@@ -102,6 +132,8 @@ export function applyCare(
   }
 
   const day = utcDayKey(now);
+  const yesterday = utcDayKey(new Date(now.getTime() - 86_400_000));
+  const streak = current.streakDay === day ? current.streak : current.streakDay === yesterday ? current.streak + 1 : 1;
   return {
     ok: true,
     state: {
@@ -111,6 +143,10 @@ export function applyCare(
       journeyMilestone,
       sunbathProgress,
       phoenixUntil,
+      totalCares: current.totalCares + 1,
+      streak,
+      streakDay: day,
+      recent: [{ name: caretakerName, action, at: now.toISOString() }, ...current.recent].slice(0, 8),
       careLog: {
         ...current.careLog,
         [memberId]: { date: day, count: count + 1 },
@@ -120,7 +156,7 @@ export function applyCare(
 }
 
 export function publicBenbenView(state: BenbenState, memberId: string | null, now = new Date()) {
-  const current = applyHourlyDecay(state, now);
+  const current = applyHourlyDecay(normalizeBenbenState(state, now), now);
   return {
     needs: current.needs,
     journey: {
@@ -134,5 +170,8 @@ export function publicBenbenView(state: BenbenState, memberId: string | null, no
     phoenixActive: Boolean(current.phoenixUntil && Date.parse(current.phoenixUntil) > now.getTime()),
     phoenixUntil: current.phoenixUntil,
     careRemaining: memberId ? Math.max(0, 3 - careCountToday(current, memberId, now)) : 0,
+    totalCares: current.totalCares,
+    streak: current.streak,
+    recent: current.recent,
   };
 }

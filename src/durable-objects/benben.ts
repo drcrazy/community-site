@@ -1,4 +1,4 @@
-import { applyCare, applyHourlyDecay, defaultBenbenState, type BenbenState, type CareAction } from "../lib/benben/state";
+import { applyCare, applyHourlyDecay, normalizeBenbenState, type BenbenState, type CareAction } from "../lib/benben/state";
 
 export class BenbenDurableObject {
   private state: DurableObjectState;
@@ -13,7 +13,7 @@ export class BenbenDurableObject {
   private async load(): Promise<BenbenState> {
     if (this.cache) return this.cache;
     const stored = await this.state.storage.get<BenbenState>("benben");
-    this.cache = stored ?? defaultBenbenState();
+    this.cache = normalizeBenbenState(stored);
     return this.cache;
   }
 
@@ -41,11 +41,11 @@ export class BenbenDurableObject {
       return Response.json(state);
     }
     if (request.method === "POST" && url.pathname === "/care") {
-      const body = (await request.json()) as { memberId?: string; action?: CareAction };
+      const body = (await request.json()) as { memberId?: string; action?: CareAction; caretakerName?: string };
       if (!body.memberId || !body.action) {
         return Response.json({ code: "invalid_body", message: "memberId and action required." }, { status: 400 });
       }
-      const result = applyCare(await this.load(), body.memberId, body.action);
+      const result = applyCare(await this.load(), body.memberId, body.action, new Date(), body.caretakerName || "Someone");
       if (!result.ok) {
         return Response.json({ code: result.reason, message: "Daily care limit reached.", state: result.state }, { status: 429 });
       }

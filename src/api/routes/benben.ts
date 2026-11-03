@@ -75,7 +75,11 @@ benbenRoutes.post("/care", async (c) => {
     const res = await stub.fetch("https://benben/care", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ memberId: member.id, action: body.action as CareAction }),
+      body: JSON.stringify({
+        memberId: member.id,
+        action: body.action as CareAction,
+        caretakerName: member.displayName || member.username,
+      }),
     });
     const payload = (await res.json()) as { state?: BenbenState; code?: string; message?: string };
     if (!res.ok || !payload.state) {
